@@ -27,8 +27,21 @@ const userSchema = new mongoose.Schema(
 
     passwordHash: {
       type: String,
-      required: [true, "Password hash is required"],
+      required: false,
       select: false,
+    },
+
+    google: {
+      sub: {
+        type: String,
+        trim: true,
+      },
+
+      email: {
+        type: String,
+        lowercase: true,
+        trim: true,
+      },
     },
 
     role: {
@@ -67,6 +80,24 @@ userSchema.index(
   { unique: true }
 );
 
-userSchema.index({ tenantId: 1, role: 1 });
+userSchema.index({
+  tenantId: 1,
+  role: 1,
+});
 
-module.exports = mongoose.model("User", userSchema);
+userSchema.index(
+  { tenantId: 1, "google.sub": 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      "google.sub": {
+        $type: "string",
+      },
+    },
+  }
+);
+
+module.exports = mongoose.model(
+  "User",
+  userSchema
+);

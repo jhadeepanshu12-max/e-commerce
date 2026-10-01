@@ -10,21 +10,32 @@ const {
 } = require("../../middleware/tenant.middleware");
 
 const {
-  getCurrentTenant,
-} = require("./controllers/tenant.controller");
+  createCoupon,
+  getCoupons,
+  updateCoupon,
+  deactivateCoupon,
+} = require("./coupon.controller");
 
 const router = express.Router();
 
-router.get(
-  "/me",
+router.use(
   authenticate,
   requireTenant,
   authorizeRoles(
     "TENANT_OWNER",
-    "STAFF",
-    "CUSTOMER"
-  ),
-  getCurrentTenant
+    "STAFF"
+  )
+);
+
+router.post("/", createCoupon);
+
+router.get("/", getCoupons);
+
+router.patch("/:id", updateCoupon);
+
+router.patch(
+  "/:id/deactivate",
+  deactivateCoupon
 );
 
 module.exports = router;

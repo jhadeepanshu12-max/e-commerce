@@ -13,6 +13,7 @@ const {
 
 const { calculateTax } = require("../taxes/tax.service");
 const { calculateShipping } = require("../shipping/shipping.service");
+const { createNotification } = require("../notifications/notification.service");
 
 const createServiceError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -532,6 +533,8 @@ const transitionOrderStatus = async ({
         );
       }
 
+      const previousStatus = order.status;
+
       const allowed =
         allowedTransitions[order.status] || [];
 
@@ -593,6 +596,73 @@ const transitionOrderStatus = async ({
 
       await order.save({ session });
       updatedOrder = order;
+
+      // Create notifications for the status change.
+      // Notification failures must not prevent the order status
+      // update from succeeding.
+      const orderStatusLabel = String(newStatus)
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .replace(/\\b\\w/g, (char) => char.toUpperCase());
+
+      try {
+        if (performedBy) {
+          await createNotification({
+            tenantId,
+            recipientId: performedBy,
+            recipientType: "USER",
+            type: "ORDER",
+            event: "ORDER_STATUS_UPDATED",
+            title: "Order status updated",
+            message: `Order ${order.orderNumber} is now ${orderStatusLabel}.`,
+            data: {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              previousStatus,
+              status: newStatus,
+            },
+            actionUrl: `/orders/${order._id}`,
+            priority:
+              newStatus === "CANCELLED"
+                ? "HIGH"
+                : "NORMAL",
+          });
+        }
+      } catch (notificationError) {
+        console.error(
+          "Failed to create admin order notification:",
+          notificationError.message
+        );
+      }
+
+      try {
+        if (order.customerId) {
+          await createNotification({
+            tenantId,
+            recipientId: order.customerId,
+            recipientType: "CUSTOMER",
+            type: "ORDER",
+            event: "ORDER_STATUS_UPDATED",
+            title: "Order status updated",
+            message: `Your order ${order.orderNumber} is now ${orderStatusLabel}.`,
+            data: {
+              orderId: order._id,
+              orderNumber: order.orderNumber,
+              status: newStatus,
+            },
+            actionUrl: `/orders/${order._id}`,
+            priority:
+              newStatus === "CANCELLED"
+                ? "HIGH"
+                : "NORMAL",
+          });
+        }
+      } catch (notificationError) {
+        console.error(
+          "Failed to create customer order notification:",
+          notificationError.message
+        );
+      }
     });
 
     return updatedOrder;
