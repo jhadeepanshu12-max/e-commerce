@@ -33,63 +33,33 @@ app.disable("x-powered-by");
 
 app.use(helmet());
 
-/*
-|--------------------------------------------------------------------------
-| CORS
-|--------------------------------------------------------------------------
-|
-| Development:
-| Allow localhost / 127.0.0.1 on any port.
-|
-| Production:
-| Only allow the configured CLIENT_URL.
-|
-*/
-
+/**
+ * Allowed frontend origins
+ */
 const allowedOrigins = [
+  // Environment-configured frontend
   env.clientUrl,
 
+  // Production frontends
+  "https://nova-storefront.onrender.com",
+  "https://nova-admin-g84l.onrender.com",
+
+  // Local development
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-  "http://localhost:5180",
-
-  "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174",
-  "http://127.0.0.1:5175",
-  "http://127.0.0.1:5180",
 ].filter(Boolean);
-
-const localhostPattern =
-  /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      /*
-       * Requests such as Postman/curl may not have an origin.
-       */
+      // Allow requests without an Origin header
+      // (Postman, curl, server-to-server requests, etc.)
       if (!origin) {
         return callback(null, true);
       }
 
-      /*
-       * Always allow explicitly configured origins.
-       */
       if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      /*
-       * In development, allow any localhost port.
-       *
-       * This prevents Vite's automatic port changes
-       * from breaking CORS during development.
-       */
-      if (
-        process.env.NODE_ENV !== "production" &&
-        localhostPattern.test(origin)
-      ) {
         return callback(null, true);
       }
 
@@ -97,7 +67,6 @@ app.use(
         new Error(`CORS origin not allowed: ${origin}`)
       );
     },
-
     credentials: true,
   })
 );
@@ -131,12 +100,9 @@ const apiLimiter = rateLimit({
 
 app.use("/api", apiLimiter);
 
-/*
-|--------------------------------------------------------------------------
-| Health Check
-|--------------------------------------------------------------------------
-*/
-
+/**
+ * Health check
+ */
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -145,90 +111,31 @@ app.get("/api/v1/health", (req, res) => {
   });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Routes
-|--------------------------------------------------------------------------
-*/
-
+/**
+ * API Routes
+ */
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/customer-auth", customerRoutes);
+app.use("/api/v1/tenants", tenantRoutes);
 
-app.use(
-  "/api/v1/customer-auth",
-  customerRoutes
-);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/inventory", inventoryRoutes);
 
-app.use(
-  "/api/v1/tenants",
-  tenantRoutes
-);
+app.use("/api/v1/cart", cartRoutes);
+app.use("/api/v1/storefront", storefrontRoutes);
 
-app.use(
-  "/api/v1/categories",
-  categoryRoutes
-);
+app.use("/api/v1/coupons", couponRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/shipping", shippingRoutes);
+app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/v1/taxes", taxRoutes);
 
-app.use(
-  "/api/v1/products",
-  productRoutes
-);
-
-app.use(
-  "/api/v1/inventory",
-  inventoryRoutes
-);
-
-app.use(
-  "/api/v1/cart",
-  cartRoutes
-);
-
-app.use(
-  "/api/v1/storefront",
-  storefrontRoutes
-);
-
-app.use(
-  "/api/v1/coupons",
-  couponRoutes
-);
-
-app.use(
-  "/api/v1/notifications",
-  notificationRoutes
-);
-
-app.use(
-  "/api/v1/orders",
-  orderRoutes
-);
-
-app.use(
-  "/api/v1/payments",
-  paymentRoutes
-);
-
-app.use(
-  "/api/v1/shipping",
-  shippingRoutes
-);
-
-app.use(
-  "/api/v1/reviews",
-  reviewRoutes
-);
-
-app.use(
-  "/api/v1/taxes",
-  taxRoutes
-);
-
-/*
-|--------------------------------------------------------------------------
-| 404 Handler
-|--------------------------------------------------------------------------
-*/
-
+/**
+ * 404 Handler
+ */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -237,12 +144,9 @@ app.use((req, res) => {
   });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Error Handler
-|--------------------------------------------------------------------------
-*/
-
+/**
+ * Global Error Handler
+ */
 app.use(errorHandler);
 
 module.exports = app;
